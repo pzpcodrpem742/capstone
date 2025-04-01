@@ -333,15 +333,16 @@ class PortfolioCity {
                 const steps = 5;
                 const stepHeight = height / steps;
                 
+                // Start from the bottom (y = -height/2)
                 for (let i = 0; i <= steps; i++) {
                     const stepWidth = width * (1 - (i * 0.15));
-                    artDecoPoints.push(new THREE.Vector2(stepWidth/2, i * stepHeight));
+                    artDecoPoints.push(new THREE.Vector2(stepWidth/2, (i * stepHeight) - height/2));
                 }
                 
                 // Mirror points for the other side
                 for (let i = steps; i >= 0; i--) {
                     const stepWidth = width * (1 - (i * 0.15));
-                    artDecoPoints.push(new THREE.Vector2(-stepWidth/2, i * stepHeight));
+                    artDecoPoints.push(new THREE.Vector2(-stepWidth/2, (i * stepHeight) - height/2));
                 }
                 
                 geometry = new THREE.LatheGeometry(artDecoPoints, 4);
@@ -357,10 +358,11 @@ class PortfolioCity {
                 const points = [];
                 const curvePoints = 8;
                 
+                // Start from the bottom (y = -height/2)
                 for (let i = 0; i <= curvePoints; i++) {
                     const t = i / curvePoints;
                     const w = width/2 * (1 + Math.sin(t * Math.PI * 2) * 0.3);
-                    points.push(new THREE.Vector2(w, t * height));
+                    points.push(new THREE.Vector2(w, (t * height) - height/2));
                 }
                 
                 geometry = new THREE.LatheGeometry(points, 8);
@@ -407,8 +409,8 @@ class PortfolioCity {
         
         const building = new THREE.Mesh(geometry, material);
         
-        // Position the building
-        building.position.set(x, y + height / 2, z);
+        // Position the building - move up by half height to sit on ground
+        building.position.set(x, y + height/2, z);
         building.castShadow = true;
         building.receiveShadow = true;
         
