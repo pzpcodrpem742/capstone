@@ -115,8 +115,7 @@ class PortfolioCity {
             
             // Create camera
             this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
-            this.camera.position.y = 10; // Character height
-            this.camera.position.z = 50; // Move camera back so we can see the scene
+            this.camera.position.set(0, 10, 150); // Position between inner (100) and outer (200) circles
             debug("Camera created");
             
             // Create renderer first to catch any WebGL context errors early
