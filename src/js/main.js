@@ -5,6 +5,17 @@ import { PointerLockControls } from 'three/addons/controls/PointerLockControls.j
 // Debug flag
 const DEBUG = true;
 
+// Check for WebGL support
+function checkWebGLSupport() {
+    try {
+        const canvas = document.createElement('canvas');
+        return !!(window.WebGLRenderingContext && 
+            (canvas.getContext('webgl') || canvas.getContext('experimental-webgl')));
+    } catch (e) {
+        return false;
+    }
+}
+
 // Debug logger
 function debug(message) {
     if (DEBUG) {
@@ -36,6 +47,15 @@ window.addEventListener('error', function(e) {
 // Main application class
 class PortfolioCity {
     constructor() {
+        debug("Checking WebGL support...");
+        if (!checkWebGLSupport()) {
+            const message = "WebGL is not supported in your browser. Please try using a modern browser with WebGL support.";
+            console.error(message);
+            alert(message);
+            return;
+        }
+        debug("WebGL is supported");
+
         debug("Initializing PortfolioCity application");
         
         // Setup properties
@@ -86,69 +106,84 @@ class PortfolioCity {
     init() {
         debug("Initializing Three.js components");
         
-        // Create camera
-        this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
-        this.camera.position.y = 10; // Character height
-        debug("Camera created");
-        
-        // Create scene with fog for atmosphere
-        this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x88ccff); // Sky blue
-        this.scene.fog = new THREE.Fog(0x88ccff, 0, 750);
-        debug("Scene created");
-        
-        // Add lighting
-        const ambientLight = new THREE.AmbientLight(0x404040);
-        this.scene.add(ambientLight);
-        
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        directionalLight.position.set(1, 1, 0.5).normalize();
-        this.scene.add(directionalLight);
-        debug("Lighting added");
-        
-        // Create ground
-        const groundGeometry = new THREE.PlaneGeometry(2000, 2000);
-        const groundMaterial = new THREE.MeshLambertMaterial({ 
-            color: 0x407020,
-            side: THREE.DoubleSide 
-        });
-        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-        ground.rotation.x = -Math.PI / 2;
-        ground.receiveShadow = true;
-        this.scene.add(ground);
-        debug("Ground created");
-        
-        // Create simple character representation (visible in third-person view)
-        this.createCharacter();
-        debug("Character created");
-        
-        // Create controls
         try {
-            this.controls = new PointerLockControls(this.camera, document.body);
-            this.scene.add(this.controls.getObject());
-            debug("Controls created");
-        } catch (error) {
-            console.error("Error creating controls:", error);
-        }
-        
-        // Create the city buildings
-        this.createCity();
-        debug("City created with " + this.buildings.length + " buildings");
-        
-        // Create renderer
-        try {
-            this.renderer = new THREE.WebGLRenderer({ antialias: true });
+            // Create scene with fog for atmosphere
+            this.scene = new THREE.Scene();
+            this.scene.background = new THREE.Color(0x88ccff); // Sky blue
+            this.scene.fog = new THREE.Fog(0x88ccff, 0, 750);
+            debug("Scene created");
+            
+            // Create camera
+            this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
+            this.camera.position.y = 10; // Character height
+            this.camera.position.z = 50; // Move camera back so we can see the scene
+            debug("Camera created");
+            
+            // Create renderer first to catch any WebGL context errors early
+            this.renderer = new THREE.WebGLRenderer({ 
+                antialias: true,
+                canvas: document.createElement('canvas'),
+                context: null // Let Three.js handle context creation
+            });
             this.renderer.setPixelRatio(window.devicePixelRatio);
             this.renderer.setSize(window.innerWidth, window.innerHeight);
             this.renderer.shadowMap.enabled = true;
             this.container.appendChild(this.renderer.domElement);
             debug("Renderer created and added to container");
+
+            // Add test cube to verify scene is working
+            const geometry = new THREE.BoxGeometry(10, 10, 10);
+            const material = new THREE.MeshPhongMaterial({ color: 0xff0000 });
+            const cube = new THREE.Mesh(geometry, material);
+            cube.position.set(0, 5, 0);
+            this.scene.add(cube);
+            debug("Test cube added");
+
+            // Add lighting
+            const ambientLight = new THREE.AmbientLight(0x404040);
+            this.scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(1, 1, 0.5).normalize();
+            this.scene.add(directionalLight);
+            debug("Lighting added");
+            
+            // Create ground
+            const groundGeometry = new THREE.PlaneGeometry(2000, 2000);
+            const groundMaterial = new THREE.MeshLambertMaterial({ 
+                color: 0x407020,
+                side: THREE.DoubleSide 
+            });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            this.scene.add(ground);
+            debug("Ground created");
+            
+            // Create simple character representation (visible in third-person view)
+            this.createCharacter();
+            debug("Character created");
+            
+            // Create controls
+            try {
+                this.controls = new PointerLockControls(this.camera, document.body);
+                this.scene.add(this.controls.getObject());
+                debug("Controls created");
+            } catch (error) {
+                console.error("Error creating controls:", error);
+            }
+            
+            // Create the city buildings
+            this.createCity();
+            debug("City created with " + this.buildings.length + " buildings");
+            
+            // Handle window resize
+            window.addEventListener('resize', () => this.onWindowResize(), false);
         } catch (error) {
-            console.error("Error creating renderer:", error);
+            console.error("Critical error during initialization:", error);
+            alert(`Failed to initialize 3D scene: ${error.message}`);
+            throw error;
         }
-        
-        // Handle window resize
-        window.addEventListener('resize', () => this.onWindowResize(), false);
     }
     
     createCharacter() {
@@ -179,62 +214,86 @@ class PortfolioCity {
     }
     
     createCity() {
-        // Inner circle buildings (6)
+        // Inner circle buildings (6) - Skills Learned
         this.createBuildingCircle(6, 100, {
             names: [
-                'Education Building',
-                'Work Experience',
-                'Skills Building',
-                'Projects Tower',
-                'Family House',
-                'Hobbies Center'
+                'Time Management Hub',
+                'Social Skills Center',
+                'Gratitude Hotel',
+                'Creative Thinking Office',
+                'Self-Awareness Tower',
+                'Tech Passion Hotel'
             ],
             descriptions: [
-                'Educational background and academic achievements.',
-                'Professional work history and accomplishments.',
-                'Technical and soft skills showcase.',
-                'Portfolio of personal and professional projects.',
-                'Family background and personal values.',
-                'Personal interests and recreational activities.'
+                'Development of planning and time management abilities.',
+                'Journey of becoming more socially comfortable while maintaining independence.',
+                'Learning to appreciate life\'s moments and experiences.',
+                'Nurturing creative problem-solving and analytical thinking.',
+                'Understanding and managing intrusive thoughts and limiting beliefs.',
+                'Growing passion for technology, coding, and computer science.'
+            ],
+            styles: [
+                'modern',      // Time Management
+                'modern',      // Social Skills
+                'postmodern',  // Gratitude
+                'modern',      // Creative Thinking
+                'modern',      // Self-Awareness
+                'postmodern'   // Tech Passion
             ],
             colors: [
-                0x8844aa, // Purple
-                0x4477dd, // Blue
-                0x44aa88, // Teal
-                0xaadd44, // Lime
-                0xddaa44, // Orange
-                0xdd4444  // Red
+                0xE0E0E0,     // Modern white
+                0xD2B48C,     // Modern earthy
+                0xFF6B6B,     // Postmodern vibrant red
+                0xF5DEB3,     // Modern wheat
+                0xE6E6FA,     // Modern light purple
+                0x00CED1      // Postmodern turquoise
             ],
-            heights: [30, 45, 35, 50, 25, 40]
+            heights: [35, 40, 45, 38, 42, 48]
         });
         
-        // Outer circle buildings (6)
-        this.createBuildingCircle(6, 200, {
+        // Outer circle buildings (8) - Life Experiences
+        this.createBuildingCircle(8, 200, {
             names: [
-                'Awards Building',
-                'Publications House',
-                'Volunteering Center',
-                'Languages Tower',
-                'Certifications Building',
-                'Future Goals Skyscraper'
+                'Childhood Wonder Tower',    // Art Deco
+                'Athletics Hotel',           // Postmodern
+                'Homeschool Office',         // Modern
+                'Pandemic Learning Center',   // Modern
+                'High School Hub',           // Postmodern
+                'Social Life Hotel',         // Postmodern
+                'Grad Committee Hotel',      // Postmodern
+                'University Applications'     // Modern
             ],
             descriptions: [
-                'Recognition and achievements received throughout career.',
-                'Published articles, papers, and other written works.',
-                'Community service and volunteer experiences.',
-                'Languages spoken and proficiency levels.',
-                'Professional certifications and courses completed.',
-                'Career aspirations and future objectives.'
+                'Early fascination with playgrounds, elevators, and water slides.',
+                'Journey through cross-country and track and field teams.',
+                'Experience of personalized education through homeschooling.',
+                'Adapting to public school during the COVID-19 pandemic.',
+                'Academic achievements and course experiences.',
+                'Growing social connections and peer interactions.',
+                'Leadership and planning experience in graduation committee.',
+                'Process of exploring and applying to universities.'
+            ],
+            styles: [
+                'artdeco',    // Childhood
+                'postmodern', // Athletics
+                'modern',     // Homeschool
+                'modern',     // Pandemic
+                'postmodern', // High School
+                'postmodern', // Social
+                'postmodern', // Grad Committee
+                'modern'      // University
             ],
             colors: [
-                0xaa44dd, // Bright Purple
-                0x44aadd, // Light Blue
-                0x44ddaa, // Light Teal
-                0xddaa44, // Gold
-                0xdd44aa, // Pink
-                0x44dd44  // Green
+                0xBEB8A7,     // Art Deco beige
+                0x7FFFD4,     // Postmodern aquamarine
+                0xFFFFFF,     // Modern white
+                0xF0F8FF,     // Modern alice blue
+                0xFF69B4,     // Postmodern hot pink
+                0x98FB98,     // Postmodern pale green
+                0x9370DB,     // Postmodern medium purple
+                0xB0C4DE      // Modern light steel blue
             ],
-            heights: [35, 30, 25, 40, 35, 55]
+            heights: [30, 45, 35, 38, 50, 42, 48, 40]
         });
     }
     
@@ -255,7 +314,8 @@ class PortfolioCity {
                 30, // depth
                 options.colors[i],
                 options.names[i],
-                options.descriptions[i]
+                options.descriptions[i],
+                options.styles[i]
             );
             
             // Add to building list for interaction
@@ -263,32 +323,88 @@ class PortfolioCity {
         }
     }
     
-    createBuilding(x, y, z, width, height, depth, color, name, description) {
-        // Create different building styles based on height
+    createBuilding(x, y, z, width, height, depth, color, name, description, style) {
         let geometry;
         
-        if (height > 45) {
-            // Skyscraper style - taller and narrower at top
-            const points = [];
-            points.push(new THREE.Vector2(width/2, 0));
-            points.push(new THREE.Vector2(width/2, height * 0.7));
-            points.push(new THREE.Vector2(width/3, height));
-            points.push(new THREE.Vector2(-width/3, height));
-            points.push(new THREE.Vector2(-width/2, height * 0.7));
-            points.push(new THREE.Vector2(-width/2, 0));
-            
-            geometry = new THREE.LatheGeometry(points, 4);
-        } else if (height > 35) {
-            // Office building style - with windows
-            geometry = new THREE.BoxGeometry(width, height, depth);
-            
-            // Add window material (not implemented in this basic version)
-        } else {
-            // Standard building
-            geometry = new THREE.BoxGeometry(width, height, depth);
+        switch(style) {
+            case 'artdeco':
+                // Art Deco style - geometric patterns and stepped form
+                const artDecoPoints = [];
+                const steps = 5;
+                const stepHeight = height / steps;
+                
+                for (let i = 0; i <= steps; i++) {
+                    const stepWidth = width * (1 - (i * 0.15));
+                    artDecoPoints.push(new THREE.Vector2(stepWidth/2, i * stepHeight));
+                }
+                
+                // Mirror points for the other side
+                for (let i = steps; i >= 0; i--) {
+                    const stepWidth = width * (1 - (i * 0.15));
+                    artDecoPoints.push(new THREE.Vector2(-stepWidth/2, i * stepHeight));
+                }
+                
+                geometry = new THREE.LatheGeometry(artDecoPoints, 4);
+                break;
+                
+            case 'modern':
+                // Modern style - clean lines with glass panels
+                geometry = new THREE.BoxGeometry(width, height, depth);
+                break;
+                
+            case 'postmodern':
+                // Postmodern style - irregular shapes and organic forms
+                const points = [];
+                const curvePoints = 8;
+                
+                for (let i = 0; i <= curvePoints; i++) {
+                    const t = i / curvePoints;
+                    const w = width/2 * (1 + Math.sin(t * Math.PI * 2) * 0.3);
+                    points.push(new THREE.Vector2(w, t * height));
+                }
+                
+                geometry = new THREE.LatheGeometry(points, 8);
+                break;
+                
+            default:
+                geometry = new THREE.BoxGeometry(width, height, depth);
         }
         
-        const material = new THREE.MeshLambertMaterial({ color: color });
+        // Create materials based on style
+        let material;
+        switch(style) {
+            case 'artdeco':
+                material = new THREE.MeshPhongMaterial({ 
+                    color: color,
+                    flatShading: true,
+                    shininess: 30
+                });
+                break;
+                
+            case 'modern':
+                material = new THREE.MeshPhysicalMaterial({ 
+                    color: color,
+                    metalness: 0.2,
+                    roughness: 0.1,
+                    transparent: true,
+                    opacity: 0.9,
+                    reflectivity: 1
+                });
+                break;
+                
+            case 'postmodern':
+                material = new THREE.MeshStandardMaterial({ 
+                    color: color,
+                    metalness: 0.5,
+                    roughness: 0.3,
+                    envMapIntensity: 1.5
+                });
+                break;
+                
+            default:
+                material = new THREE.MeshLambertMaterial({ color: color });
+        }
+        
         const building = new THREE.Mesh(geometry, material);
         
         // Position the building
@@ -300,7 +416,8 @@ class PortfolioCity {
         building.userData = {
             name: name,
             description: description,
-            isBuilding: true
+            isBuilding: true,
+            style: style
         };
         
         // Add to scene
@@ -312,6 +429,7 @@ class PortfolioCity {
         buildingInfoDiv.innerHTML = `
             <h2>${name}</h2>
             <p>${description}</p>
+            <p class="style-info">Style: ${style.charAt(0).toUpperCase() + style.slice(1)}</p>
         `;
         document.body.appendChild(buildingInfoDiv);
         
@@ -425,6 +543,13 @@ class PortfolioCity {
     animate() {
         try {
             requestAnimationFrame(() => this.animate());
+            
+            // Rotate test cube
+            const testCube = this.scene.children.find(child => child instanceof THREE.Mesh && child.geometry instanceof THREE.BoxGeometry);
+            if (testCube) {
+                testCube.rotation.x += 0.01;
+                testCube.rotation.y += 0.01;
+            }
             
             if (this.controls.isLocked === true) {
                 // Character movement
